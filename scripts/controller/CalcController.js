@@ -1,6 +1,9 @@
 class CalcController {
-    
+
     constructor() {
+
+        this._audio = new Audio('click.mp3');
+        this._audioOnOff = false;
         this._lastOperator = '';
         this._lastNumber = '';
 
@@ -15,29 +18,66 @@ class CalcController {
         this.initKeyboard();
     }
 
+    pasteFromClipboard() {
+        document.addEventListener('paste', e => {
+            let text = e.clipboardData.getData('Text');
+            this.displayCalc = parseFloat(text);
+        });
+    }
+
+    copyToClipboard() {
+        let input = document.createElement('input');
+        input.value = this.displayCalc;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("Copy");
+        input.remove();
+    }
+
     initialize() {
 
         this.setDisplayDateTime();
 
-        setInterval(()=>{
-            this.setDisplayDateTime();    
+        setInterval(() => {
+            this.setDisplayDateTime();
         }, 1000);
 
         this.setLastNumberToDisplay();
+        this.pasteFromClipboard();
+
+        document.querySelectorAll('.btn-ac').forEach(btn => {
+            btn.addEventListener('dblclick', e => {
+                this.toggleAudio();
+            });
+        });
+    }
+
+    toggleAudio() {
+        this._audioOnOff = !this._audioOnOff;
+    }
+
+    playAudio() {
+        if (this._audioOnOff) {
+            this._audio.currentTime = 0;
+            this._audio.play();
+        }
     }
 
     initKeyboard() {
         document.addEventListener('keyup', e => {
-            switch(e.key) {
-            
+
+            this.playAudio();
+
+            switch (e.key) {
+
                 case 'Escape':
                     this.clearAll();
                     break;
-    
+
                 case 'Backspace':
                     this.clearEntry();
                     break;
-    
+
                 case '+':
                 case '-':
                 case '*':
@@ -45,17 +85,17 @@ class CalcController {
                 case '%':
                     this.addOperation(e.key);
                     break;
-    
+
                 case 'Enter':
                 case '=':
                     this.calc();
                     break;
-    
+
                 case '.':
                 case ',':
                     this.addDot();
                     break;
-    
+
                 case '0':
                 case '1':
                 case '2':
@@ -67,6 +107,10 @@ class CalcController {
                 case '8':
                 case '9':
                     this.addOperation(parseInt(e.key));
+                    break;
+
+                case 'c':
+                    if (e.ctrlKey) this.copyToClipboard();
                     break;
             }
         });
@@ -111,7 +155,11 @@ class CalcController {
     }
 
     getResult() {
-        return eval(this._operation.join(""));
+        try {
+            return eval(this._operation.join(""));
+        } catch (e) {
+            this.setError();
+        }
     }
 
     calc() {
@@ -136,7 +184,7 @@ class CalcController {
         if (last == '%') {
             result /= 100;
             this._operation = [result];
-        } else {            
+        } else {
             this._operation = [result];
 
             if (last) this._operation.push(last);
@@ -177,7 +225,7 @@ class CalcController {
             if (this.isOperator(value)) {
                 this.setLastOperation(value);
             } else {
-                this.pushOperation(value);          
+                this.pushOperation(value);
                 this.setLastNumberToDisplay();
             }
 
@@ -213,8 +261,10 @@ class CalcController {
 
     execBtn(value) {
 
-        switch(value) {
-            
+        this.playAudio();
+
+        switch (value) {
+
             case 'ac':
                 this.clearAll();
                 break;
@@ -226,7 +276,7 @@ class CalcController {
             case 'soma':
                 this.addOperation('+');
                 break;
-            
+
             case 'subtracao':
                 this.addOperation('-');
                 break;
@@ -234,7 +284,7 @@ class CalcController {
             case 'multiplicacao':
                 this.addOperation('*');
                 break;
-                
+
             case 'divisao':
                 this.addOperation('/');
                 break;
@@ -316,6 +366,11 @@ class CalcController {
     }
 
     set displayCalc(value) {
+
+        if (value.toString().length > 10) {
+            this.setError();
+            return false;
+        }
         this._displayCalcEl.innerHTML = value;
     }
 
